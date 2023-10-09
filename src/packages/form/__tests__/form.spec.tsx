@@ -2,6 +2,7 @@ import * as React from 'react'
 import { render, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { useEffect } from 'react'
+import { act } from 'react-dom/test-utils'
 import Form from '@/packages/form'
 import Input from '@/packages/input'
 
@@ -75,8 +76,11 @@ test('form set change value', () => {
   )
   const inputEl = container.querySelector('.nut-input-native') as Element
   const form = container.querySelector('form') as Element
-  fireEvent.change(inputEl, { target: { value: 'NutUI React Taro' } })
-  fireEvent.submit(form)
+
+  act(() => {
+    fireEvent.change(inputEl, { target: { value: 'NutUI React Taro' } })
+    fireEvent.submit(form)
+  })
   expect(handleSubmit).toBeCalled()
   expect(handleSubmit).toBeCalledWith(
     expect.objectContaining({
@@ -110,6 +114,52 @@ test('form onFinishFailed', () => {
   )
   const inputEl = container.querySelector('.nut-input-native') as Element
   const form = container.querySelector('form') as Element
+
+  act(() => {
+    fireEvent.submit(form)
+  })
+  expect(handleFailed).toBeCalled()
+  // Expected: ObjectContaining {"field": "username", "fieldValue": "NutUI React Taro", "message": "min 50"}
+  // Received: {"username": "NutUI React Taro"}, [{"field": "username", "fieldValue": "NutUI React Taro", "message": "min 50"}]
+  expect(handleFailed).toBeCalledWith({ username: 'NutUI React Taro' }, [
+    {
+      field: 'username',
+      fieldValue: 'NutUI React Taro',
+      message: 'min 50',
+    },
+  ])
+})
+
+test('form validate promise', () => {
+  const handleFailed = jest.fn()
+  const { container } = render(
+    <Form
+      initialValues={{ username: 'NutUI-React' }}
+      onFinishFailed={handleFailed}
+    >
+      <Form.Item
+        name="username"
+        required
+        label="UserName"
+        rules={[
+          {
+            required: true,
+            message: 'required',
+          },
+          {
+            validator: (rule, value) => {
+              // eslint-disable-next-line
+              return Promise.reject('promise not valid')
+            },
+          },
+        ]}
+      >
+        <Input />
+      </Form.Item>
+    </Form>
+  )
+  const inputEl = container.querySelector('.nut-input-native') as Element
+  const form = container.querySelector('form') as Element
   fireEvent.change(inputEl, { target: { value: 'NutUI React Taro' } })
   fireEvent.submit(form)
   expect(handleFailed).toBeCalled()
@@ -119,7 +169,7 @@ test('form onFinishFailed', () => {
     {
       field: 'username',
       fieldValue: 'NutUI React Taro',
-      message: 'min 50',
+      message: 'promise not valid',
     },
   ])
 })
